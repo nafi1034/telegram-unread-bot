@@ -1,20 +1,21 @@
 import logging
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-from config import TOKEN
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO
 )
 
-logger = logging.getLogger(__name__)
+# Replace with your token from config.py or env
+from config import TOKEN
 
 unread_messages = {}
 
-def start(update, context):
-    update.message.reply_text("Hello! I’ll track unread messages for you.")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Hello! I’ll track unread messages for you.")
 
-def handle_message(update, context):
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     text = update.message.text
 
@@ -22,27 +23,25 @@ def handle_message(update, context):
         unread_messages[user_id] = []
     unread_messages[user_id].append(text)
 
-    update.message.reply_text("Got your message! Marked as unread.")
+    await update.message.reply_text("Got your message! Marked as unread.")
 
-def show_unread(update, context):
+async def show_unread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     if user_id in unread_messages and unread_messages[user_id]:
         msgs = "\n".join(unread_messages[user_id])
-        update.message.reply_text(f"Your unread messages:\n{msgs}")
+        await update.message.reply_text(f"Your unread messages:\n{msgs}")
         unread_messages[user_id] = []
     else:
-        update.message.reply_text("No unread messages!")
+        await update.message.reply_text("No unread messages!")
 
 def main():
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
+    app = ApplicationBuilder().token(TOKEN).build()
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("unread", show_unread))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("unread", show_unread))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    updater.start_polling()
-    updater.idle()
+    app.run_polling()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
